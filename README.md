@@ -6,10 +6,23 @@ Modernized PyTorch port of **FMODetect** (Rozumnyi et al., 2021, [arxiv 2012.082
 2. **Joint TDF + matting multi-task head** — collapses the paper's stage-1 (detection) and stage-2 (matting) into a single shared-encoder network with two decoders. Reduces the 3-stage pipeline to 2 stages (detection-matting + optional ADMM deblurring).
 3. **Uncertainty-weighted boundary loss** — Gaussian-NLL on the Truncated Distance Function with per-pixel learned σ, plus an L1 penalty on `‖∇D - ∇D̂‖` for sharper trajectory endpoints. Reduces to the paper's L1 split-loss when `log_var = 0` and `boundary_weight = 0`.
 
-Original TensorFlow 1.x/2.x code is preserved under [`FMODetect-master/`](FMODetect-master/) for reference.
+Original TensorFlow 1.x/2.x code is preserved under [`FMODetect-master/`](FMODetect-master/) for reference (not in this repo — local only).
 
-## Hardware target
-Single NVIDIA GTX 1650 (4 GB VRAM, Turing CC 7.5). Trains with `batch_size=2 × grad_accum=8`, AMP fp16, channels-last.
+**Repo:** <https://github.com/jai-krishna-0921/FMODetect-v2>
+
+## Hardware targets
+
+| | Local | Colab T4 (free) |
+|---|---|---|
+| VRAM | 4 GB (GTX 1650, Turing CC 7.5) | 15 GB |
+| Recommended batch size | 4 (or 2 + grad-accum=8) | 16 |
+| Precision | fp32 (CBAM blocks NaN in fp16 without norm) | fp32 |
+| Config | `configs/default.yaml` | `configs/colab.yaml` (written by the Colab notebook) |
+| Tested epoch time | ~3 min @ bs 2 (5 k samples) | est ~2 min @ bs 16 |
+
+## One-click Colab training
+
+The fastest way to train: open `notebooks/train_colab.ipynb` in Google Colab (or replay the notebook this README came with). The notebook clones this repo, downloads VOT2016 + falling/TbD-3D/TbD eval sets to your Drive, generates the 5 k synthetic dataset, trains with MLflow + TensorBoard logging, and runs eval on each downloaded dataset. Everything heavy lands in `/content/drive/MyDrive/FMODetect-v2/` so the runtime can die without losing progress.
 
 ## Project layout
 
