@@ -1,0 +1,45 @@
+# Smoke-test config: tiny dataset, 2 epochs, quick verification.
+seed: 0
+device: cuda
+
+data:
+  h5_path: datasets/synth/smoke.h5
+  val_fraction: 0.2
+  num_workers: 0          # avoid h5py fork issues during quick smoke
+  pin_memory: false
+
+model:
+  in_channels: 6
+  base_channels: [16, 64, 128, 256, 256]
+  use_cbam: true
+  predict_matting: true
+  predict_uncertainty: true
+
+loss:
+  matting_weight: 0.5
+  boundary_weight: 0.1
+
+train:
+  epochs: 2
+  batch_size: 2
+  grad_accum_steps: 2
+  lr: 2.0e-5
+  weight_decay: 1.0e-5
+  amp: false
+  channels_last: true
+  grad_clip_norm: 1.0
+  log_every_n_steps: 10
+  val_every_n_epochs: 1
+  save_every_n_epochs: 1
+  early_stop_patience: 999
+
+logging:
+  mlflow_uri: file:./experiments/mlruns
+  mlflow_experiment: fmodetect-v2-smoke
+  use_clearml: false
+  clearml_project: fmodetect-v2-smoke
+  tensorboard_dir: experiments/tb
+
+checkpoints:
+  dir: experiments/checkpoints
+  keep_best_n: 1

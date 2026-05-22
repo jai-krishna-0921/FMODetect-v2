@@ -1,0 +1,46 @@
+# Original TF reference code (kept locally; not part of the v2 PyTorch port)
+FMODetect-master/
+
+# Local reference assets
+docs/
+
+# Local env / secrets
+.env
+.env.*
+*.pem
+*.key
+.mcp.json
+.claude/
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Node / Next.js
+node_modules/
+ui/.next/
+ui/out/
+
+# Datasets & artefacts (heavy; regenerate on Colab/Drive)
+datasets/
+experiments/
+api/_static/
+*.h5
+*.pt
+*.ckpt
+
+# Misc OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Other
+claude-ml-setup.tar.gz
+setup.sh
