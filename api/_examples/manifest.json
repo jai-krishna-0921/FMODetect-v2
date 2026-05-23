@@ -1,0 +1,26 @@
+[
+  {
+    "name": "pen",
+    "label": "Pen",
+    "frame": "00000039.png",
+    "motion_score": 1.3
+  },
+  {
+    "name": "key",
+    "label": "Key",
+    "frame": "00000033.png",
+    "motion_score": 1.05
+  },
+  {
+    "name": "marker",
+    "label": "Marker",
+    "frame": "00000032.png",
+    "motion_score": 1.33
+  },
+  {
+    "name": "box",
+    "label": "Box",
+    "frame": "00000033.png",
+    "motion_score": 2.15
+  }
+]

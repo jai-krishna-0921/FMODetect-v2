@@ -12,6 +12,7 @@ type Trajectory = {
 };
 type ImageResult = { overlay_url: string; tdf_url: string; trajectories: Trajectory[]; n_detections: number };
 type VideoResult = { overlay_url: string; frames: number; out: string };
+type Example = { name: string; label: string; thumb_url: string };
 
 export default function Home() {
   const [mode, setMode] = useState<"image" | "video">("image");
@@ -22,13 +23,30 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [info, setInfo] = useState<Record<string, unknown> | null>(null);
+  const [examples, setExamples] = useState<Example[]>([]);
+  const [activeSample, setActiveSample] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/info").then(r => r.json()).then(setInfo).catch(() => {});
+    fetch("/api/examples").then(r => r.json()).then(setExamples).catch(() => setExamples([]));
   }, []);
 
+  const runSample = async (name: string) => {
+    setBusy(true); setErr(null); setResult(null); setActiveSample(name);
+    setMode("image");
+    try {
+      const r = await fetch(`/api/infer/sample/${name}`, { method: "POST" });
+      if (!r.ok) throw new Error(`API error ${r.status}: ${await r.text()}`);
+      setResult(await r.json());
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const submit = async () => {
-    setBusy(true); setErr(null); setResult(null);
+    setBusy(true); setErr(null); setResult(null); setActiveSample(null);
     const fd = new FormData();
     try {
       let path = "";
@@ -74,6 +92,33 @@ export default function Home() {
           </div>
         )}
       </header>
+
+      {examples.length > 0 && (
+        <div className="mb-10">
+          <div className="mono mb-3 text-[10px] uppercase tracking-[0.18em] text-[--text-muted]">
+            Try a sample
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {examples.map(ex => (
+              <button
+                key={ex.name}
+                onClick={() => runSample(ex.name)}
+                disabled={busy}
+                className={`group relative overflow-hidden border transition-colors disabled:opacity-50 ${
+                  activeSample === ex.name && result
+                    ? "border-[--accent]"
+                    : "border-[--border] hover:border-[--border-strong]"
+                }`}
+              >
+                <img src={ex.thumb_url} alt={ex.label} className="block h-20 w-32 object-cover opacity-90 transition-opacity group-hover:opacity-100" />
+                <span className="mono absolute bottom-0 left-0 right-0 bg-black/55 px-2 py-1 text-left text-[10px] uppercase tracking-wider text-[--text-soft]">
+                  {ex.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mb-8 flex items-center gap-8 border-b border-[--border] pb-3">
         {(["image", "video"] as const).map(m => (
