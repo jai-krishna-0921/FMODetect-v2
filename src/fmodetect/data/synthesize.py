@@ -36,8 +36,9 @@ from skimage.transform import resize
 class SynthConfig:
     out_shape: tuple[int, int] = (256, 512)          # H, W
     bg_size_min: int = 256
-    speed_range: tuple[float, float] = (1.5, 9.0)    # × disc radius
-    radius_range: tuple[int, int] = (20, 60)         # disc radius in px (smaller than paper to fit 4GB)
+    speed_range: tuple[float, float] = (0.8, 9.0)    # × disc radius (lower min for slow objects)
+    radius_range: tuple[int, int] = (8, 50)          # broadened: pen-thin to ball-size
+    aspect_ratio_range: tuple[float, float] = (0.3, 1.0)  # 1.0 = disc, <1 = elongated
     tdf_truncation_factor: float = 2.0               # paper uses 2r
 
     # --- v2 augmentations & motion variety ---
@@ -124,7 +125,7 @@ def _random_trajectory(
     Zigzag and sinusoidal trajectories can't be represented by the 8-DOF parametric
     form exactly; for them we return the best-fitting line in `params`.
     """
-    speed = rng.uniform(1.5, 9.0) * rad
+    speed = rng.uniform(0.8, 9.0) * rad
     sy = rng.uniform(0, h - 1)
     sx = rng.uniform(0, w - 1)
     params = np.zeros((2, 4), dtype=np.float32)
@@ -290,10 +291,17 @@ def synthesize_sample(
     # Resize bg
     bg_resized = resize(bg, (H, W), order=3, anti_aliasing=True).astype(np.float32)
 
-    # Resize pattern to a random disc diameter
+    # Resize pattern with random short/long axis (aspect ratio jitter for elongated FMOs).
     rad = rng.randint(*cfg.radius_range)
-    diam = 2 * rad
-    pat = np.asarray(Image.fromarray(pattern_rgba).resize((diam, diam), Image.BILINEAR))
+    short = 2 * rad
+    ar = rng.uniform(*cfg.aspect_ratio_range)        # 1.0 = circular disc, <1 = elongated
+    long_axis = max(short, int(round(short / ar)))
+    # randomize which dimension is the long axis (vertical vs horizontal elongation)
+    if rng.random() < 0.5:
+        w, h = long_axis, short
+    else:
+        w, h = short, long_axis
+    pat = np.asarray(Image.fromarray(pattern_rgba).resize((w, h), Image.BILINEAR))
     # Optional rotation of foreground before convolving (varies texture orientation)
     if rng.random() < cfg.rotate_fg_prob:
         deg = rng.uniform(0, 360)
