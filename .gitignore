@@ -48,3 +48,4 @@ setup.sh
 # Stray notebooks from downloads
 scratchpad.ipynb
 *-Copy*.ipynb
+drive-ids.txt
