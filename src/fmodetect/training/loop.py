@@ -106,7 +106,17 @@ def _save_ckpt(model: FMODetectNet, opt: torch.optim.Optimizer, scaler: torch.am
     return p
 
 
-def train(cfg: Config) -> None:
+def train(cfg: Config, *, resume_from: str | None = None,
+          epochs_override: int | None = None) -> None:
+    """Train (or resume).
+
+    Args:
+        cfg: parsed config.
+        resume_from: optional path to a .pt checkpoint. If given, model + optimizer
+            + scaler state are restored and training continues from `epoch + 1`.
+        epochs_override: if set, replaces cfg.train.epochs (useful when resuming
+            and you only want to train N more epochs).
+    """
     _seed_everything(cfg.seed)
     device = torch.device(cfg.device if torch.cuda.is_available() else "cpu")
     print(f"[train] device={device}")
@@ -123,6 +133,32 @@ def train(cfg: Config) -> None:
     opt = torch.optim.AdamW(model.parameters(), lr=cfg.train.lr, weight_decay=cfg.train.weight_decay)
     scaler = torch.amp.GradScaler("cuda", enabled=cfg.train.amp and device.type == "cuda")
 
+    # ---- Resume ----
+    start_epoch = 0
+    resumed_best_loss = float("inf")
+    if resume_from:
+        rp = Path(resume_from)
+        if not rp.exists():
+            raise FileNotFoundError(f"resume checkpoint not found: {rp}")
+        print(f"[train] resuming from {rp}")
+        sd = torch.load(rp, map_location=device, weights_only=False)
+        model.load_state_dict(sd["model"])
+        if "opt" in sd:
+            try:
+                opt.load_state_dict(sd["opt"])
+            except (ValueError, KeyError) as e:
+                print(f"[train] could not restore optimizer ({e}); starting opt fresh")
+        if "scaler" in sd and scaler.is_enabled():
+            try:
+                scaler.load_state_dict(sd["scaler"])
+            except (KeyError, RuntimeError):
+                pass
+        start_epoch = int(sd.get("epoch", -1)) + 1
+        resumed_best_loss = float(sd.get("best_loss", float("inf")))
+        print(f"[train]   restored: start_epoch={start_epoch}  best_loss={resumed_best_loss:.4f}")
+
+    total_epochs = epochs_override if epochs_override is not None else cfg.train.epochs
+
     # MLflow
     mlflow.set_tracking_uri(cfg.logging.mlflow_uri)
     mlflow.set_experiment(cfg.logging.mlflow_experiment)
@@ -134,6 +170,9 @@ def train(cfg: Config) -> None:
         **{f"loss.{k}": v for k, v in cfg.loss.model_dump().items()},
         "data.h5_path": cfg.data.h5_path,
         "params_M": n_params / 1e6,
+        "resume_from": resume_from or "",
+        "start_epoch": start_epoch,
+        "total_epochs": total_epochs,
     })
 
     # Optional ClearML mirror
@@ -147,12 +186,12 @@ def train(cfg: Config) -> None:
     tb = SummaryWriter(log_dir=str(Path(cfg.logging.tensorboard_dir) / run_name))
     ckpt_dir = Path(cfg.checkpoints.dir) / run_name
 
-    best_loss = float("inf")
+    best_loss = resumed_best_loss
     patience_left = cfg.train.early_stop_patience
     global_step = 0
     accum = cfg.train.grad_accum_steps
 
-    for epoch in range(cfg.train.epochs):
+    for epoch in range(start_epoch, total_epochs):
         model.train()
         opt.zero_grad(set_to_none=True)
         pbar = tqdm(train_loader, desc=f"epoch {epoch}")

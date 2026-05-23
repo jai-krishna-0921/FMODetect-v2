@@ -1,0 +1,46 @@
+# Vast.ai config — RTX PRO 6000 (96 GB VRAM) tuned for fast resume training.
+# Used by scripts/setup_vast.sh and notebooks/train_vast.ipynb.
+seed: 42
+device: cuda
+
+data:
+  h5_path: /workspace/data/vot_fmo.h5      # local SSD on Vast container
+  val_fraction: 0.04
+  num_workers: 8                            # Vast boxes have plenty of CPU
+  pin_memory: true
+
+model:
+  in_channels: 6
+  base_channels: [16, 64, 128, 256, 256]
+  use_cbam: true
+  predict_matting: true
+  predict_uncertainty: true
+
+loss:
+  matting_weight: 0.5
+  boundary_weight: 0.1
+
+train:
+  epochs: 45                                # if resuming from epoch 28, leaves 16 more
+  batch_size: 64                            # 96 GB VRAM has headroom
+  grad_accum_steps: 1
+  lr: 2.0e-5
+  weight_decay: 1.0e-5
+  amp: false                                # CBAM blocks without norm NaN in fp16
+  channels_last: true
+  grad_clip_norm: 1.0
+  log_every_n_steps: 20
+  val_every_n_epochs: 1
+  save_every_n_epochs: 3
+  early_stop_patience: 8
+
+logging:
+  mlflow_uri: file:/workspace/experiments/mlruns
+  mlflow_experiment: fmodetect-v2-vast
+  use_clearml: false
+  clearml_project: fmodetect-v2
+  tensorboard_dir: /workspace/experiments/tb
+
+checkpoints:
+  dir: /workspace/experiments/checkpoints
+  keep_best_n: 3
