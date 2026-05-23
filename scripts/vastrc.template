@@ -1,0 +1,13 @@
+# Copy this to ~/.vastrc and fill in.   chmod 600 ~/.vastrc
+
+# Vast.ai connection (fill in once you rent the instance)
+export VAST_HOST=root@1.2.3.4
+export VAST_PORT=12345
+export VAST_KEY=~/.ssh/id_ed25519
+
+# Google Drive file IDs (the 33-char ID between /d/ and /view in the share URL)
+export H5_DRIVE_ID=PASTE_H5_ID_HERE
+export CKPT_DRIVE_ID=PASTE_CKPT_ID_HERE
+
+# Training knobs
+export RESUME_TOTAL_EPOCHS=45
