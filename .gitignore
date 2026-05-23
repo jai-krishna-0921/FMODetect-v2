@@ -49,3 +49,8 @@ setup.sh
 scratchpad.ipynb
 *-Copy*.ipynb
 drive-ids.txt
+
+# UI scratch
+ui/next-env.d.ts
+.playwright-mcp/
+ui-*.png

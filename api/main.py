@@ -61,6 +61,10 @@ def health() -> dict:
 
 @app.get("/info")
 def info() -> dict:
+    try:
+        _ensure_model()
+    except HTTPException:
+        pass
     return {
         "ckpt": _state.get("ckpt"),
         "device": str(_state.get("device")),

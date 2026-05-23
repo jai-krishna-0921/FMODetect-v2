@@ -33,16 +33,16 @@ export default function Home() {
     try {
       let path = "";
       if (mode === "image") {
-        if (!image || !bg) throw new Error("upload both image and background");
+        if (!image || !bg) throw new Error("Please provide both an image and a background.");
         fd.append("image", image); fd.append("background", bg);
         path = "/api/infer/image";
       } else {
-        if (!video) throw new Error("upload a video");
+        if (!video) throw new Error("Please provide a video clip.");
         fd.append("video", video);
         path = "/api/infer/video";
       }
       const r = await fetch(path, { method: "POST", body: fd });
-      if (!r.ok) throw new Error(`api error ${r.status}: ${await r.text()}`);
+      if (!r.ok) throw new Error(`API error ${r.status}: ${await r.text()}`);
       setResult(await r.json());
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -52,83 +52,115 @@ export default function Home() {
   };
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12">
-      <header className="mb-10">
-        <h1 className="text-4xl font-bold tracking-tight">FMODetect<span className="text-orange-400">·v2</span></h1>
-        <p className="mt-2 text-neutral-400">
-          CBAM attention · joint TDF + matting · uncertainty-weighted boundary loss
+    <main className="mx-auto max-w-3xl px-8 py-20">
+      <header className="mb-16">
+        <div className="mono mb-3 text-[11px] uppercase tracking-[0.18em] text-[--text-muted]">
+          Research demo · v0.2
+        </div>
+        <h1 className="serif text-[2.5rem] font-normal leading-tight tracking-tight text-[--text]">
+          Detecting fast-moving objects<br />
+          <span className="italic text-[--text-soft]">from a single blurred frame.</span>
+        </h1>
+        <p className="mt-6 max-w-xl text-[15px] leading-relaxed text-[--text-soft]">
+          A PyTorch re-implementation of FMODetect with three additions:
+          CBAM attention, a joint truncated-distance / matting head, and an
+          uncertainty-weighted boundary loss.
         </p>
         {info && (
-          <div className="mt-3 text-xs text-neutral-500">
-            device: <code>{String(info.device)}</code> · gpu: <code>{String(info.gpu ?? "—")}</code> ·
-            ckpt: <code>{String(info.ckpt ?? "(none)")}</code>
+          <div className="mono mt-6 flex flex-wrap gap-x-6 gap-y-1 text-[11px] text-[--text-muted]">
+            <span>device <span className="text-[--text-soft]">{String(info.device ?? "—")}</span></span>
+            <span>gpu <span className="text-[--text-soft]">{String(info.gpu ?? "cpu")}</span></span>
+            <span>checkpoint <span className="text-[--text-soft]">{abbrev(info.ckpt)}</span></span>
           </div>
         )}
       </header>
 
-      <div className="mb-6 flex gap-2">
+      <div className="mb-8 flex items-center gap-8 border-b border-[--border] pb-3">
         {(["image", "video"] as const).map(m => (
           <button
             key={m}
             onClick={() => { setMode(m); setResult(null); setErr(null); }}
-            className={`rounded-md px-4 py-2 text-sm font-medium ${
-              mode === m ? "bg-orange-500 text-black" : "bg-neutral-900 text-neutral-300 hover:bg-neutral-800"
+            className={`relative text-[13px] tracking-wide transition-colors ${
+              mode === m ? "text-[--text]" : "text-[--text-muted] hover:text-[--text-soft]"
             }`}
-          >{m.toUpperCase()}</button>
+          >
+            {m === "image" ? "Image pair" : "Video clip"}
+            {mode === m && (
+              <span className="absolute -bottom-[14px] left-0 right-0 h-px bg-[--accent]" />
+            )}
+          </button>
         ))}
       </div>
 
-      <section className="rounded-lg border border-neutral-800 bg-neutral-950 p-6">
+      <section>
         {mode === "image" ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <FileSlot label="Image with FMO" accept="image/*" file={image} onChange={setImage} />
-            <FileSlot label="Background" accept="image/*" file={bg} onChange={setBg} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FileSlot label="Frame with FMO" hint="single image, motion-blurred subject" accept="image/*" file={image} onChange={setImage} />
+            <FileSlot label="Background" hint="same scene without the object" accept="image/*" file={bg} onChange={setBg} />
           </div>
         ) : (
-          <FileSlot label="Video clip" accept="video/*" file={video} onChange={setVideo} />
+          <FileSlot label="Video clip" hint="mp4 or mov, any length" accept="video/*" file={video} onChange={setVideo} />
         )}
-        <button
-          onClick={submit}
-          disabled={busy}
-          className="mt-6 rounded-md bg-orange-500 px-6 py-2.5 font-semibold text-black disabled:opacity-50"
-        >{busy ? "Running…" : "Detect FMO"}</button>
-        {err && <p className="mt-3 text-sm text-red-400">{err}</p>}
+
+        <div className="mt-8 flex items-center gap-5">
+          <button
+            onClick={submit}
+            disabled={busy}
+            className="group inline-flex items-center gap-2 border border-[--accent-soft] px-5 py-2 text-[13px] tracking-wide text-[--accent] transition-all hover:bg-[--accent-soft]/15 disabled:opacity-40"
+          >
+            {busy ? (
+              <>
+                <span className="inline-block h-1 w-1 animate-pulse rounded-full bg-[--accent]" />
+                Running inference…
+              </>
+            ) : (
+              <>Detect <span className="text-[--accent-soft] transition-colors group-hover:text-[--accent]">→</span></>
+            )}
+          </button>
+          {err && <p className="text-[12px] text-rose-400/80">{err}</p>}
+        </div>
       </section>
 
       {result && (
-        <section className="mt-10">
-          <h2 className="mb-4 text-lg font-semibold">Detection</h2>
+        <section className="mt-20">
+          <div className="serif mb-6 text-[11px] uppercase tracking-[0.18em] text-[--text-muted]">
+            <span className="not-italic">— Result</span>
+          </div>
+
           {"overlay_url" in result && result.overlay_url.endsWith(".mp4") ? (
-            <video controls className="w-full rounded-lg border border-neutral-800" src={result.overlay_url} />
+            <video
+              controls
+              className="w-full border border-[--border]"
+              src={result.overlay_url}
+            />
           ) : (
             <>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <figure>
-                  <figcaption className="mb-1 text-xs text-neutral-400">
-                    Overlay ({(result as ImageResult).n_detections} detection{(result as ImageResult).n_detections !== 1 ? "s" : ""})
-                  </figcaption>
-                  <img className="w-full rounded border border-neutral-800" src={(result as ImageResult).overlay_url} />
-                </figure>
-                <figure>
-                  <figcaption className="mb-1 text-xs text-neutral-400">Truncated Distance Function</figcaption>
-                  <img className="w-full rounded border border-neutral-800" src={(result as ImageResult).tdf_url} />
-                </figure>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <Figure
+                  caption={`Overlay — ${(result as ImageResult).n_detections} detection${
+                    (result as ImageResult).n_detections === 1 ? "" : "s"
+                  }`}
+                  src={(result as ImageResult).overlay_url}
+                />
+                <Figure
+                  caption="Truncated distance function"
+                  src={(result as ImageResult).tdf_url}
+                />
               </div>
+
               {(result as ImageResult).trajectories?.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-neutral-400">
+                <div className="mt-14">
+                  <h3 className="serif mb-5 text-[11px] uppercase tracking-[0.18em] text-[--text-muted]">
                     Trajectories
                   </h3>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="divide-y divide-[--border] border-y border-[--border]">
                     {(result as ImageResult).trajectories.map((t, i) => (
-                      <div key={i} className="rounded border border-neutral-800 bg-neutral-900 p-3 text-xs">
-                        <div className="mb-1 font-mono text-orange-400">FMO #{i + 1}</div>
-                        <Row k="length" v={`${t.length_px.toFixed(1)} px`} />
-                        <Row k="speed" v={`${t.speed_px_per_frame.toFixed(1)} px / frame`} />
-                        <Row k="radius" v={`${t.radius_px.toFixed(1)} px`} />
-                        <Row k="confidence" v={(t.confidence * 100).toFixed(1) + "%"} />
-                        <Row k="pixels" v={String(t.n_pixels)} />
-                        <Row k="bbox (yxyx)" v={t.bbox_yxyx.join(", ")} />
+                      <div key={i} className="grid grid-cols-12 gap-4 py-4 text-[13px]">
+                        <div className="mono col-span-2 text-[--accent]">#{String(i + 1).padStart(2, "0")}</div>
+                        <Stat k="length"     v={`${t.length_px.toFixed(1)} px`} />
+                        <Stat k="speed"      v={`${t.speed_px_per_frame.toFixed(1)} px/f`} />
+                        <Stat k="radius"     v={`${t.radius_px.toFixed(1)} px`} />
+                        <Stat k="confidence" v={(t.confidence * 100).toFixed(0) + "%"} />
                       </div>
                     ))}
                   </div>
@@ -138,28 +170,58 @@ export default function Home() {
           )}
         </section>
       )}
+
+      <footer className="mono mt-24 border-t border-[--border] pt-6 text-[11px] text-[--text-muted]">
+        After Rozumnyi et al., <span className="italic">FMODetect</span> (ICCV 2021) ·
+        novelty notes in <span className="text-[--text-soft]">NOVELTY.md</span>
+      </footer>
     </main>
   );
 }
 
-function Row({ k, v }: { k: string; v: string }) {
+function Figure({ caption, src }: { caption: string; src: string }) {
   return (
-    <div className="flex justify-between">
-      <span className="text-neutral-500">{k}</span>
-      <span className="text-neutral-200">{v}</span>
+    <figure>
+      <img className="w-full border border-[--border]" src={src} alt={caption} />
+      <figcaption className="mono mt-2 text-[11px] text-[--text-muted]">{caption}</figcaption>
+    </figure>
+  );
+}
+
+function Stat({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="col-span-5 sm:col-span-2 sm:col-start-auto">
+      <div className="mono text-[10px] uppercase tracking-wider text-[--text-muted]">{k}</div>
+      <div className="mono mt-0.5 text-[--text-soft]">{v}</div>
     </div>
   );
 }
 
-function FileSlot({ label, accept, file, onChange }:
-  { label: string; accept: string; file: File | null; onChange: (f: File | null) => void }) {
+function FileSlot({
+  label, hint, accept, file, onChange,
+}: {
+  label: string; hint: string; accept: string;
+  file: File | null; onChange: (f: File | null) => void;
+}) {
   return (
-    <label className="flex cursor-pointer flex-col items-center justify-center rounded-md border border-dashed
-                      border-neutral-700 bg-neutral-900 p-6 text-center text-sm hover:border-orange-400">
-      <span className="text-neutral-400">{label}</span>
-      <span className="mt-2 text-neutral-200">{file ? file.name : "click or drop file"}</span>
+    <label className="group block cursor-pointer border border-[--border] bg-[--surface] p-6 transition-colors hover:border-[--border-strong]">
+      <div className="flex items-baseline justify-between">
+        <span className="text-[13px] text-[--text]">{label}</span>
+        <span className="mono text-[10px] uppercase tracking-wider text-[--text-muted]">
+          {file ? "selected" : "empty"}
+        </span>
+      </div>
+      <div className="mono mt-3 truncate text-[12px] text-[--text-soft]">
+        {file ? file.name : <span className="text-[--text-muted]">{hint}</span>}
+      </div>
       <input type="file" accept={accept} className="hidden"
         onChange={(e) => onChange(e.target.files?.[0] ?? null)} />
     </label>
   );
+}
+
+function abbrev(v: unknown): string {
+  if (!v || typeof v !== "string") return "—";
+  const parts = v.split("/");
+  return parts.length > 2 ? "…/" + parts.slice(-2).join("/") : v;
 }
