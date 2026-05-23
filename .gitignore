@@ -44,3 +44,7 @@ Thumbs.db
 # Other
 claude-ml-setup.tar.gz
 setup.sh
+
+# Stray notebooks from downloads
+scratchpad.ipynb
+*-Copy*.ipynb
