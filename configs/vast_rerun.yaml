@@ -39,7 +39,7 @@ train:
   grad_clip_norm: 1.0
   log_every_n_steps: 50
   val_every_n_epochs: 1
-  save_every_n_epochs: 3       # crash safety — leaves recent ckpt if box dies
+  save_every_n_epochs: 6       # crash safety + disk-headroom on 58 GB Vast box (~83 ckpts × 70 MB = 5.8 GB)
   early_stop_patience: 40      # longer patience for the long run
 
 logging:
