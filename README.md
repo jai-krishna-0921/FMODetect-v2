@@ -123,5 +123,6 @@ cd ui && npm install && npm run dev    # http://localhost:3000
 | Synthetic VOT-FMO H5 built | ✅ (5 k samples, v3 pipeline) |
 | Model trained | ✅ (v2 ckpt, 120 epochs, val −4.89) |
 | Live demo deployed | ✅ ([Hugging Face Space](https://huggingface.co/spaces/jai-krishna/fmodetect-v2)) |
-| Benchmark numbers on falling dataset | ⚠️ P=0.067, R=0.091 — well below paper (0.989 / 0.825); training compute was ~1.2 % of paper's, see [NOVELTY.md](NOVELTY.md) for honest assessment |
-| Longer training run to close the gap | ⏳ next |
+| Benchmark numbers on falling dataset (v2 ckpt) | ⚠️ P=0.067, R=0.091 — well below paper (0.989 / 0.825); training compute ~1.2 % of paper's |
+| v3 synth retrain (radius (8,50) + aspect jitter) | ❌ regressed to P=R=0 on falling — see [EXPERIMENTS.md](EXPERIMENTS.md) for post-mortem; v2 ckpt remains the deployed model |
+| Longer training run with v2 distribution | ⏳ cheap next-experiment candidate (~$3) |
