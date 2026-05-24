@@ -1,0 +1,59 @@
+# Warm-start config: init weights from v2 best.pt, train on v3 synth distribution.
+# Hypothesis: v2's learned localization carries over; v3 synth's broader
+# distribution closes the synth-real gap without losing what v2 learned.
+#
+# Differences vs configs/vast_rerun.yaml:
+#   * epochs 500 → 600 (we have $6.88 = ~5h ≈ 540 epochs, leave headroom)
+#   * lr 5e-5 → 2e-5 (fine-tune LR — model is already good)
+#   * early_stop_patience 40 → 80 (v3 plateaued for 40, longer patience for warm-start noise)
+#   * save_every_n_epochs 6 → 20 (with pruning, ~5 ckpts × 70 MB = 350 MB)
+#
+# Launch:
+#   PYTHONPATH=. python scripts/train.py \
+#       --config configs/vast_warmstart.yaml \
+#       --init-from /workspace/v2_best.pt
+
+seed: 42
+device: cuda
+
+data:
+  h5_path: /workspace/data/vot_fmo_v2.h5
+  val_fraction: 0.04
+  num_workers: 8
+  pin_memory: true
+
+model:
+  in_channels: 6
+  base_channels: [16, 64, 128, 256, 256]
+  use_cbam: true
+  predict_matting: true
+  predict_uncertainty: true
+
+loss:
+  matting_weight: 0.2          # match v3 (let TDF head dominate)
+  boundary_weight: 0.3         # match v3 (sharper trajectory edges)
+
+train:
+  epochs: 600
+  batch_size: 64
+  grad_accum_steps: 1
+  lr: 2.0e-5                   # fine-tune LR (warm-start)
+  weight_decay: 1.0e-5
+  amp: false
+  channels_last: true
+  grad_clip_norm: 1.0
+  log_every_n_steps: 50
+  val_every_n_epochs: 1
+  save_every_n_epochs: 20      # with pruning: 5 last + best + last = ~7 ckpts
+  early_stop_patience: 80      # long patience for warm-start noise
+
+logging:
+  mlflow_uri: file:/workspace/experiments/mlruns
+  mlflow_experiment: fmodetect-v2-warmstart
+  use_clearml: false
+  clearml_project: fmodetect-v2
+  tensorboard_dir: /workspace/experiments/tb
+
+checkpoints:
+  dir: /workspace/experiments/checkpoints
+  keep_best_n: 5

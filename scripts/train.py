@@ -16,13 +16,16 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--config", type=Path, default=Path("configs/default.yaml"))
     p.add_argument("--resume", type=Path, default=None,
-                   help="Optional checkpoint to resume from (model+opt+scaler+epoch).")
+                   help="Resume: restore model+opt+scaler+epoch from this ckpt.")
+    p.add_argument("--init-from", type=Path, default=None,
+                   help="Warm-start: load weights ONLY (fresh opt + epoch=0).")
     p.add_argument("--epochs", type=int, default=None,
                    help="Override config train.epochs (total target, not delta).")
     args = p.parse_args()
     cfg = load_config(args.config)
     train(cfg,
           resume_from=str(args.resume) if args.resume else None,
+          init_from=str(args.init_from) if args.init_from else None,
           epochs_override=args.epochs)
 
 

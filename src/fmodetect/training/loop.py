@@ -106,17 +106,31 @@ def _save_ckpt(model: FMODetectNet, opt: torch.optim.Optimizer, scaler: torch.am
     return p
 
 
+def _prune_epoch_ckpts(ckpt_dir: Path, keep_last_n: int = 5) -> None:
+    """Keep only the N most recent epoch_NNN.pt files; best.pt + last.pt always preserved."""
+    files = sorted(ckpt_dir.glob("epoch_*.pt"))
+    for f in files[:-keep_last_n]:
+        try:
+            f.unlink()
+        except OSError:
+            pass
+
+
 def train(cfg: Config, *, resume_from: str | None = None,
+          init_from: str | None = None,
           epochs_override: int | None = None) -> None:
-    """Train (or resume).
+    """Train (or resume / warm-start).
 
     Args:
         cfg: parsed config.
-        resume_from: optional path to a .pt checkpoint. If given, model + optimizer
-            + scaler state are restored and training continues from `epoch + 1`.
-        epochs_override: if set, replaces cfg.train.epochs (useful when resuming
-            and you only want to train N more epochs).
+        resume_from: optional .pt to fully resume (model + opt + scaler + epoch).
+        init_from: optional .pt to warm-start weights ONLY (fresh opt, fresh
+            schedule, epoch counter starts at 0). Mutually exclusive with
+            resume_from. Use for transfer-learning from a previous best ckpt.
+        epochs_override: if set, replaces cfg.train.epochs.
     """
+    if resume_from and init_from:
+        raise ValueError("pass either resume_from or init_from, not both")
     _seed_everything(cfg.seed)
     device = torch.device(cfg.device if torch.cuda.is_available() else "cpu")
     print(f"[train] device={device}")
@@ -133,7 +147,7 @@ def train(cfg: Config, *, resume_from: str | None = None,
     opt = torch.optim.AdamW(model.parameters(), lr=cfg.train.lr, weight_decay=cfg.train.weight_decay)
     scaler = torch.amp.GradScaler("cuda", enabled=cfg.train.amp and device.type == "cuda")
 
-    # ---- Resume ----
+    # ---- Resume / warm-start ----
     start_epoch = 0
     resumed_best_loss = float("inf")
     if resume_from:
@@ -156,6 +170,14 @@ def train(cfg: Config, *, resume_from: str | None = None,
         start_epoch = int(sd.get("epoch", -1)) + 1
         resumed_best_loss = float(sd.get("best_loss", float("inf")))
         print(f"[train]   restored: start_epoch={start_epoch}  best_loss={resumed_best_loss:.4f}")
+    elif init_from:
+        ip = Path(init_from)
+        if not ip.exists():
+            raise FileNotFoundError(f"init checkpoint not found: {ip}")
+        print(f"[train] warm-starting weights from {ip} (fresh opt + epoch=0)")
+        sd = torch.load(ip, map_location=device, weights_only=False)
+        model.load_state_dict(sd["model"])
+        # Intentionally skip opt / scaler / epoch / best_loss — fresh schedule.
 
     total_epochs = epochs_override if epochs_override is not None else cfg.train.epochs
 
@@ -250,6 +272,7 @@ def train(cfg: Config, *, resume_from: str | None = None,
 
         if (epoch + 1) % cfg.train.save_every_n_epochs == 0:
             _save_ckpt(model, opt, scaler, epoch, best_loss, ckpt_dir, f"epoch_{epoch:03d}")
+            _prune_epoch_ckpts(ckpt_dir, keep_last_n=5)
 
     _save_ckpt(model, opt, scaler, epoch, best_loss, ckpt_dir, "last")
     mlflow.end_run()
