@@ -1,5 +1,9 @@
 # FMODetect-v2
 
+[![Open in Spaces](https://huggingface.co/datasets/huggingface/badges/resolve/main/open-in-hf-spaces-sm.svg)](https://huggingface.co/spaces/jai-krishna/fmodetect-v2)
+
+**Live demo:** <https://huggingface.co/spaces/jai-krishna/fmodetect-v2> — drop in an image + a clean background (or click a bundled sample) and the model returns trajectory, speed, radius, and a TDF visualisation. Runs on a CPU-only HF Space, so expect 2–3 s per inference.
+
 Modernized PyTorch port of **FMODetect** (Rozumnyi et al., 2021, [arxiv 2012.08216](https://arxiv.org/abs/2012.08216)) with three novelty axes:
 
 1. **CBAM attention** at every U-Net block — channel + spatial gating, ~+0.1M params per stage.
@@ -109,16 +113,15 @@ cd ui && npm install && npm run dev    # http://localhost:3000
 
 ## Status
 
-Code is scaffolded and the data pipeline + model + losses + training loop + inference + API + UI are all in place. Not yet trained.
-
 | Stage | Status |
 |------|------|
 | Paper read + original code analysis | ✅ |
 | PyTorch port (model, losses, dataset) | ✅ |
 | Training loop (AMP, grad accum, MLflow, ClearML, TB) | ✅ |
 | Inference CLI + FastAPI + Next.js UI | ✅ |
-| Smoke tests | ✅ (data + model) |
-| Datasets downloaded | ⏳ (background) |
-| Synthetic VOT-FMO H5 built | ⏳ |
-| Model trained | ⏳ |
-| Benchmark numbers | ⏳ |
+| Smoke tests | ✅ |
+| Synthetic VOT-FMO H5 built | ✅ (5 k samples, v3 pipeline) |
+| Model trained | ✅ (v2 ckpt, 120 epochs, val −4.89) |
+| Live demo deployed | ✅ ([Hugging Face Space](https://huggingface.co/spaces/jai-krishna/fmodetect-v2)) |
+| Benchmark numbers on falling dataset | ⚠️ P=0.067, R=0.091 — well below paper (0.989 / 0.825); training compute was ~1.2 % of paper's, see [NOVELTY.md](NOVELTY.md) for honest assessment |
+| Longer training run to close the gap | ⏳ next |
